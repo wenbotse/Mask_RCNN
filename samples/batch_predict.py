@@ -123,35 +123,119 @@ class_names = ['BG', 'person', 'bicycle', 'car', 'motorcycle', 'airplane',
 # In[5]:
 
 
-# Load a random image from the images folder
-file_names = next(os.walk(IMAGE_DIR))[2]
-#image = skimage.io.imread(os.path.join(IMAGE_DIR, random.choice(file_names)))
-image = cv2.imread("test.jpg")
-cv2.imwrite("origin_image.jpg",image)
-print("image",image.shape)
-# Run detection
-results = model.detect([image], verbose=1)
 
-# Visualize results
-r = results[0]
-#print(results[0])
-print(results[0]['masks'].shape)
-#visualize.display_instances(image, r['rois'], r['masks'], r['class_ids'], class_names, r['scores'])
-# 375, 500, 3
-i_len = results[0]['masks'].shape[0]
-j_len = results[0]['masks'].shape[1]
-k_len = results[0]['masks'].shape[2]
-print("i_len",i_len,"j_len",j_len,"k_len",k_len)
-print(image.shape)
-print("r['masks'][0][0][0]",r['masks'][0][0][0] == False)
-none_zero = 0
+def read_urls():
+    urls=[]
+    f = open("images.txt")               # 返回一个文件对象
+    line = f.readline()               # 调用文件的 readline()方法
+    while line:
+        urls.append(line.replace('\n',''))
+        line = f.readline()
+    f.close()
+    return urls
+
+image_names = read_urls()
+image_size = len(image_names)
+
+def maxRoi(r, rois):
+    idx = -1
+    max_area = 0
+    for i in range(len(rois)):
+         if r['class_ids'][i] == 1:
+             x1 = rois[i][0]
+             y1 = rois[i][1]
+             x2 = rois[i][2]
+             y2 = rois[i][3]
+             area = (x2-x1)*(y2-y1)
+             if area > max_area:
+                 max_area = area
+                 idx = i
+    if idx == -1:
+        return "", idx
+    return rois[idx], idx
+def next_image(start_idx, batch_size=config.BATCH_SIZE):
+    imgs = []
+    if start_idx > image_size-1:
+        return imgs
+    end_idx = start_idx + batch_size
+    if end_idx > image_size:
+        end_idx = image_size
+    return image_names[start_idx:end_idx]
+def run():
+    print("config.BATCH_SIZE",config.BATCH_SIZE)
+    start = 0
+    while(start < image_size):
+        sub_images = next_image(start)
+        print("begin detect batch size=",len(sub_images))
+        detect(sub_images)
+        start = start + 10
+def detect(image_names):
+    images = []
+    for img_name in image_names:
+        if os.path.exists(img_name) == False:
+            continue
+        print("begin detect ",img_name)
+        image = cv2.imread(img_name)
+        images.append(image)
+        # Run detection
+    results = []
+    results = model.detect(images, verbose=1)
+    print("finish detect ",image_names)
+    if len(results) == 0:
+        print("no obj is detected for img",img_name)
+        return
+    sub_image_size = len(images)
+    for s in range(sub_image_size):
+        r = results[s]
+        #visualize.display_instances(image, r['rois'], r['masks'], r['class_ids'], class_names, r['scores'])
+        none_zero = 0
+        max_roi, idx = maxRoi(r, r['rois'])
+        if idx == -1:
+            print("no person detect in image ", img_name)
+            continue
+        for i in range(max_roi[0],max_roi[2]):
+            for j in range(max_roi[1],max_roi[3]):
+                if r['masks'][i][j][idx] == False:
+                    images[s][i][j][0]=255
+                    images[s][i][j][1]=255
+                    images[s][i][j][2]=255
+        newimage = images[s][max_roi[0]:max_roi[2],max_roi[1]:max_roi[3]]
+        cv2.imwrite("masked_images/"+image_names[s].split('/')[1], newimage)
+        print("finish write mask image","masked_images/"+image_names[s].split('/')[1])
+    
+
+#i_len = results[0]['masks'].shape[0]
+#j_len = results[0]['masks'].shape[1]
+#k_len = results[0]['masks'].shape[2]
+#print("i_len",i_len,"j_len",j_len,"k_len",k_len)
+#print(image.shape)
+#print(r['rois'])
+#print(r['class_ids'])
+#print("r['masks'][0][0][0]",r['masks'][0][0][0] == False)
+
+
+
+'''
+for i in range(i_len):
+    for j in range(j_len):
+        if r['masks'][i][j][idx] == False:
+            image[i][j][0]=255
+            image[i][j][1]=255
+            image[i][j][2]=255
+'''
+
+'''
 for i in range(i_len):
     for j in range(j_len):
         flag = False
         for k in range(k_len):
-            flag = flag or r['masks'][i][j][k]
+            if r['class_ids'][k] == 1:
+                flag = flag or r['masks'][i][j][k]
         if flag == False:
             image[i][j][0]=255
             image[i][j][1]=255
             image[i][j][2]=255
-cv2.imwrite("masked_image.jpg",image)
+'''
+
+if __name__ == "__main__":
+    run()

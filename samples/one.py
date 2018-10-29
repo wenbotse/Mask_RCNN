@@ -122,36 +122,96 @@ class_names = ['BG', 'person', 'bicycle', 'car', 'motorcycle', 'airplane',
 
 # In[5]:
 
+image_names = ["test.jpg"]
+def maxRoi(rois):
+    idx = -1
+    max_area = 0
+    for i in range(len(rois)):
+         if r['class_ids'][i] == 1:
+             x1 = rois[i][0]
+             y1 = rois[i][1]
+             x2 = rois[i][2]
+             y2 = rois[i][3]
+             area = (x2-x1)*(y2-y1)
+             if area > max_area:
+                 max_area = area
+                 idx = i
+    if idx == -1:
+        return "", idx
+    return rois[idx], idx 
+image_size = len(image_names)
+start_idx = 0
+for image_idx in range(start_idx,image_size,1):
+    img_name = image_names[image_idx]
+    masked_image_name = "masked_"+img_name
+    if os.path.exists(masked_image_name) == True:
+        print("detected image ",img_name)
+        continue
+    print("begin detect ",img_name,"image idx=",image_idx)
+    if os.path.exists(img_name) == False:
+        print(img_name+" not exists")
+        continue
 
-# Load a random image from the images folder
-file_names = next(os.walk(IMAGE_DIR))[2]
-#image = skimage.io.imread(os.path.join(IMAGE_DIR, random.choice(file_names)))
-image = cv2.imread("test.jpg")
-cv2.imwrite("origin_image.jpg",image)
-print("image",image.shape)
-# Run detection
-results = model.detect([image], verbose=1)
+    image = cv2.imread(img_name)
+    # Run detection
+    results = []
+    try:
+        results = model.detect([image], verbose=1)
+    except:
+        print("exception image",img_name)
+    print("finish detect ", img_name)
+    if len(results) == 0:
+        print("no obj is detected for img",img_name)
+        continue
+    r = results[0]
+    #visualize.display_instances(image, r['rois'], r['masks'], r['class_ids'], class_names, r['scores'])
+    none_zero = 0
+    max_roi, idx = maxRoi(r['rois'])
+    if idx == -1:
+        print("no person detect in image ", img_name)
+        continue
+    for i in range(max_roi[0],max_roi[2]):
+        for j in range(max_roi[1],max_roi[3]):
+            if r['masks'][i][j][idx] == False:
+                image[i][j][0]=255
+                image[i][j][1]=255
+                image[i][j][2]=255
+    newimage = image[max_roi[0]:max_roi[2],max_roi[1]:max_roi[3]]
+    cv2.imwrite(masked_image_name, newimage)
+    print("finish write mask image",masked_image_name)
+    
 
-# Visualize results
-r = results[0]
-#print(results[0])
-print(results[0]['masks'].shape)
-#visualize.display_instances(image, r['rois'], r['masks'], r['class_ids'], class_names, r['scores'])
-# 375, 500, 3
-i_len = results[0]['masks'].shape[0]
-j_len = results[0]['masks'].shape[1]
-k_len = results[0]['masks'].shape[2]
-print("i_len",i_len,"j_len",j_len,"k_len",k_len)
-print(image.shape)
-print("r['masks'][0][0][0]",r['masks'][0][0][0] == False)
-none_zero = 0
+#i_len = results[0]['masks'].shape[0]
+#j_len = results[0]['masks'].shape[1]
+#k_len = results[0]['masks'].shape[2]
+#print("i_len",i_len,"j_len",j_len,"k_len",k_len)
+#print(image.shape)
+#print(r['rois'])
+#print(r['class_ids'])
+#print("r['masks'][0][0][0]",r['masks'][0][0][0] == False)
+
+
+
+'''
+for i in range(i_len):
+    for j in range(j_len):
+        if r['masks'][i][j][idx] == False:
+            image[i][j][0]=255
+            image[i][j][1]=255
+            image[i][j][2]=255
+'''
+
+'''
 for i in range(i_len):
     for j in range(j_len):
         flag = False
         for k in range(k_len):
-            flag = flag or r['masks'][i][j][k]
+            if r['class_ids'][k] == 1:
+                flag = flag or r['masks'][i][j][k]
         if flag == False:
             image[i][j][0]=255
             image[i][j][1]=255
             image[i][j][2]=255
-cv2.imwrite("masked_image.jpg",image)
+'''
+
+

@@ -122,7 +122,7 @@ class_names = ['BG', 'person', 'bicycle', 'car', 'motorcycle', 'airplane',
 
 # In[5]:
 
-
+mask_output_dir = "masked_neg_images"
 
 def read_urls():
     urls=[]
@@ -131,12 +131,10 @@ def read_urls():
     while line:
         urls.append(line.replace('\n',''))
         line = f.readline()
-        urls.append(line)
     f.close()
     return urls
 
 image_names = read_urls()
-
 
 def maxRoi(rois):
     idx = -1
@@ -154,10 +152,19 @@ def maxRoi(rois):
     if idx == -1:
         return "", idx
     return rois[idx], idx 
-for img_name in image_names:
-    if os.path.exists(img_name) == False:
+image_size = len(image_names)
+start_idx = 0
+for image_idx in range(start_idx,image_size,1):
+    img_name = image_names[image_idx]
+    masked_image_name = mask_output_dir+"/"+img_name.split('/')[1]
+    if os.path.exists(masked_image_name) == True:
+        print("detected image ",img_name)
         continue
-    print("begin detect ",img_name)
+    print("begin detect ",img_name,"image idx=",image_idx)
+    if os.path.exists(img_name) == False:
+        print(img_name+" not exists")
+        continue
+
     image = cv2.imread(img_name)
     # Run detection
     results = []
@@ -176,7 +183,6 @@ for img_name in image_names:
     if idx == -1:
         print("no person detect in image ", img_name)
         continue
-    print("idx",idx)
     for i in range(max_roi[0],max_roi[2]):
         for j in range(max_roi[1],max_roi[3]):
             if r['masks'][i][j][idx] == False:
@@ -184,8 +190,8 @@ for img_name in image_names:
                 image[i][j][1]=255
                 image[i][j][2]=255
     newimage = image[max_roi[0]:max_roi[2],max_roi[1]:max_roi[3]]
-    cv2.imwrite("masked_images/"+img_name.split('/')[1], newimage)
-    print("finish write mask image","masked_images/"+img_name.split('/')[1])
+    cv2.imwrite(masked_image_name, newimage)
+    print("finish write mask image",masked_image_name)
     
 
 #i_len = results[0]['masks'].shape[0]
