@@ -74,11 +74,11 @@ class_names = ['BG', 'person', 'bicycle', 'car', 'motorcycle', 'airplane',
                'teddy bear', 'hair drier', 'toothbrush']
 
 
-def result_callback(url, prob):
-    print("call back set url=",url," prob=", prob)
+def result_callback(url, color_prob, gender_prob):
+    print("call back set url=",url," prob=", color_prob," gender_prob=",gender_prob)
     file = "detect_result.txt"
     with open(file, 'a+') as f:
-        f.write(url + "\t" + str(prob) + "\n")
+        f.write(url + "\t" + str(color_prob) +"\t"+str(gender_prob)+ "\n")
     f.close()
 
 def load_image(image_url):
@@ -90,7 +90,25 @@ def load_image(image_url):
     img_data /= 255
     return img_data
 
-def make_network():
+def make_gender_network():
+    model = Sequential()
+    model.add(Conv2D(32, (3, 3),activation='relu', padding='same', input_shape=(128, 128, 3)))
+    model.add(Conv2D(64, (3, 3),activation='relu'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Dropout(0.25))
+    model.add(Conv2D(128,(2,2),activation='relu'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Dropout(0.25))
+    model.add(Flatten())
+    model.add(Dense(256,activation='relu'))
+    model.add(Dropout(0.5))
+    model.add(Dense(128,activation='relu'))
+    model.add(Dropout(0.5))
+    model.add(Dense(1,activation='sigmoid'))
+    model.summary()
+    return model
+
+def make_color_network():
     model = Sequential()
     model.add(Conv2D(48, (5, 5), strides=2, padding='valid', input_shape=(128, 128, 3)))
     model.add(Activation('relu'))
@@ -132,11 +150,15 @@ def make_network():
     #model.summary()
     return model
 
-classify_model = make_network()
-#classify_model.load_weights("./facerank.h5.5_0.49827")
-#classify_model.load_weights("facerank.h5.0_0.51556")
-#classify_model.load_weights("facerank.h5.6_0.37979")
-classify_model.load_weights("facerank.h5.7_0.37896")
+color_classify_model = make_color_network()
+#color_classify_model.load_weights("./facerank.h5.5_0.49827")
+#color_classify_model.load_weights("facerank.h5.0_0.51556")
+#color_classify_model.load_weights("facerank.h5.6_0.37979")
+color_classify_model.load_weights("facerank.h5.7_0.37896")
+
+gender_classify_model = make_gender_network()
+gender_classify_model.load_weights("gender.h5.5_0.45093")
+
 def generate_urls(num=10):
     #arr = ["http://img.mxtrip.cn/fadd1b80f8f62eb335cca0a1ffb777f1.jpeg"]
     urls=[]
@@ -220,9 +242,10 @@ def run_detect(url):
     out = im.resize((128, 128))
     out.save("images_resize/"+name)
     image = load_image("images_resize/"+name)
-    probs = classify_model.predict(image, verbose=0)
-    result_callback(url, probs[0][0])     
-    
+    color_probs = color_classify_model.predict(image, verbose=0)
+    gender_probs = gender_classify_model.predict(image, verbose=0)
+
+    result_callback(url, color_probs[0][0], gender_probs[0][0])     
     if os.path.exists("images_resize/"+name) == True :
         os.remove("images_resize/"+name)
         #print("delete file name="+("images_resize/"+name))
