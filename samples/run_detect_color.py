@@ -157,8 +157,9 @@ color_classify_model = make_color_network()
 color_classify_model.load_weights("facerank.h5.7_0.37896")
 
 gender_classify_model = make_gender_network()
-gender_classify_model.load_weights("gender.h5.5_0.45093")
-
+#gender_classify_model.load_weights("gender.h5.5_0.45093")
+#gender_classify_model.load_weights("gender.h5.4_0.43926")
+gender_classify_model.load_weights("gender.h5.8_0.37923")
 def generate_urls(num=10):
     #arr = ["http://img.mxtrip.cn/fadd1b80f8f62eb335cca0a1ffb777f1.jpeg"]
     urls=[]
@@ -218,6 +219,7 @@ def run_detect(url):
         results = model.detect([image], verbose=1)
     except:
         print("exception image",img_name)
+        return
     print("finish detect ", img_name)
     if len(results) == 0:
         print("no obj is detected for img",img_name)
